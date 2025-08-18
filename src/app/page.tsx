@@ -1,6 +1,7 @@
 "use client";
 
-import { faChartBar, faPenToSquare, faPlus, faSort, faTrash } from "@fortawesome/free-solid-svg-icons";
+// ✅ ÍCONES DE ORDENAÇÃO ESPECÍFICOS IMPORTADOS
+import { faChartBar, faPenToSquare, faPlus, faSort, faSortDown, faSortUp, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ArcElement, CategoryScale, Chart, Legend, LinearScale, PieController, Tooltip } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -11,6 +12,7 @@ import * as XLSX from "xlsx";
 interface Funcionario {
   ID: number;
   NOME: string;
+  CARGO: string;
   SETOR: string;
   Unidade: string;
   "Tipo de Contrato": string;
@@ -39,7 +41,6 @@ const meses = [
 ];
 const tiposDeContrato = ["CLT", "Estágio", "Terceirizado", "Sócio", "Outros"];
 
-// ✅ NOVAS CONSTANTES PARA AS DROPLISTS
 const setoresDisponiveis = ["DEV", "CRM", "STI", "ADM", "UNI", "WEB", "MKT", "ISM"];
 const unidadesDisponiveis = ["CM", "PV"];
 
@@ -61,6 +62,7 @@ const ordemTempoEmpresa = [
 ];
 const initialNewEmployeeState = {
   NOME: "",
+  CARGO: "",
   SETOR: "",
   Unidade: "",
   "Tipo de Contrato": "CLT",
@@ -247,6 +249,10 @@ export default function GestaoFuncionariosPage() {
     () => [...new Set(todosFuncionarios.map(f => f.SETOR).filter(Boolean))].sort(),
     [todosFuncionarios]
   );
+  const cargosUnicos = useMemo(
+    () => [...new Set(todosFuncionarios.map(f => f.CARGO).filter(Boolean))].sort(),
+    [todosFuncionarios]
+  );
   const unidadesUnicas = useMemo(
     () => [...new Set(todosFuncionarios.map(f => f.Unidade).filter(Boolean))].sort(),
     [todosFuncionarios]
@@ -277,31 +283,33 @@ export default function GestaoFuncionariosPage() {
     setNewEmployee(prev => ({ ...prev, [name]: value }));
   };
 
-  // ✅ FUNÇÃO ATUALIZADA COM AS VALIDAÇÕES DE DATA
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validações de preenchimento
-    if (!newEmployee.NOME || !newEmployee["Data Adm."] || !newEmployee["Data Nasc."] || !newEmployee.SETOR || !newEmployee.Unidade) {
-      alert("Todos os campos com (*) são obrigatórios, incluindo Setor e Unidade.");
+    if (!newEmployee.NOME || !newEmployee.CARGO || !newEmployee["Data Adm."] || !newEmployee["Data Nasc."] || !newEmployee.SETOR || !newEmployee.Unidade) {
+      alert("Todos os campos com (*) são obrigatórios.");
       return;
     }
-
-    // Validações de Lógica de Datas
+    
     const dataNascimento = new Date(newEmployee["Data Nasc."]);
     const dataAdmissao = new Date(newEmployee["Data Adm."]);
     
-    // Corrige o fuso horário para comparação de datas
     dataNascimento.setMinutes(dataNascimento.getMinutes() + dataNascimento.getTimezoneOffset());
     dataAdmissao.setMinutes(dataAdmissao.getMinutes() + dataAdmissao.getTimezoneOffset());
 
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); 
+
+    if (dataAdmissao > hoje) {
+      alert("A data de admissão não pode ser uma data futura.");
+      return;
+    }
 
     if (dataAdmissao < dataNascimento) {
       alert("A data de admissão não pode ser anterior à data de nascimento.");
       return;
     }
-
-    const hoje = new Date();
+    
     const dataLimite13Anos = new Date(hoje.getFullYear() - 13, hoje.getMonth(), hoje.getDate());
 
     if (dataNascimento > dataLimite13Anos) {
@@ -345,9 +353,22 @@ export default function GestaoFuncionariosPage() {
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setEmployeeToEdit(prev => (prev ? { ...prev, [e.target.name]: e.target.value } : null));
   };
+
   const handleUpdateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeToEdit) return;
+
+    const dataAdmissao = new Date(employeeToEdit["Data Adm."]);
+    dataAdmissao.setMinutes(dataAdmissao.getMinutes() + dataAdmissao.getTimezoneOffset());
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (dataAdmissao > hoje) {
+      alert("A data de admissão não pode ser uma data futura.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const response = await fetch("/api/manage-employee", {
@@ -408,8 +429,10 @@ export default function GestaoFuncionariosPage() {
     { id: "chart-aniversariantes", title: "Aniversariantes por Mês", key: "Data Nasc.", isMonth: true },
     { id: "chart-admissao", title: "Admissões por Mês", key: "Data Adm.", isMonth: true },
   ];
+
   const tableHeaders = [
     { key: "NOME", label: "Nome" },
+    { key: "CARGO", label: "Cargo" },
     { key: "SETOR", label: "Setor", chartIndex: 0 },
     { key: "Unidade", label: "Unidade", chartIndex: 1 },
     { key: "Tipo de Contrato", label: "Tipo Contrato", chartIndex: 2 },
@@ -442,6 +465,17 @@ export default function GestaoFuncionariosPage() {
     } else {
       alert("Não há dados para exibir no gráfico com os filtros atuais.");
     }
+  };
+
+  // ✅ NOVA FUNÇÃO AUXILIAR PARA RENDERIZAR O ÍCONE DE ORDENAÇÃO
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <FontAwesomeIcon icon={faSort} className="ml-1 text-gray-400" />;
+    }
+    if (sortConfig.direction === 'asc') {
+      return <FontAwesomeIcon icon={faSortUp} className="ml-1 text-white" />;
+    }
+    return <FontAwesomeIcon icon={faSortDown} className="ml-1 text-white" />;
   };
 
   const inputStyle =
@@ -555,9 +589,10 @@ export default function GestaoFuncionariosPage() {
           <table className="w-full border-collapse text-sm text-gray-800 dark:text-gray-300">
             <thead className="bg-[#34495e] text-white">
               <tr>
+                {/* ✅ LÓGICA DO CABEÇALHO ATUALIZADA PARA USAR A NOVA FUNÇÃO DE ÍCONE */}
                 {tableHeaders.map(({ key, label, chartIndex }) => (
                   <th key={key} className="p-3 text-left font-semibold cursor-pointer" onClick={() => handleSort(key)}>
-                    {label} <FontAwesomeIcon icon={faSort} className="ml-1" />
+                    {label} {getSortIcon(key)}
                     {chartIndex !== undefined && (
                       <FontAwesomeIcon
                         icon={faChartBar}
@@ -580,6 +615,7 @@ export default function GestaoFuncionariosPage() {
                   className="border-b border-gray-200 dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800 hover:bg-yellow-300 dark:hover:bg-yellow-500/20"
                 >
                   <td className="p-3">{f.NOME || ""}</td>
+                  <td className="p-3">{f.CARGO || ""}</td>
                   <td className="p-3">{f.SETOR || ""}</td>
                   <td className="p-3">{f.Unidade || ""}</td>
                   <td className="p-3">{f["Tipo de Contrato"] || ""}</td>
@@ -669,7 +705,24 @@ export default function GestaoFuncionariosPage() {
                       className={inputStyle}
                     />
                   </div>
-                  {/* ✅ CAMPO SETOR ALTERADO PARA DROPLIST */}
+                  <div className="flex flex-col">
+                    <label htmlFor="CARGO" className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Cargo *
+                    </label>
+                    <input
+                      type="text"
+                      id="CARGO"
+                      name="CARGO"
+                      required
+                      value={newEmployee.CARGO}
+                      onChange={handleNewEmployeeChange}
+                      className={inputStyle}
+                      list="cargos-sugestoes"
+                    />
+                    <datalist id="cargos-sugestoes">
+                      {cargosUnicos.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </div>
                   <div className="flex flex-col">
                     <label htmlFor="SETOR" className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Setor *
@@ -686,7 +739,6 @@ export default function GestaoFuncionariosPage() {
                       {setoresDisponiveis.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
-                  {/* ✅ CAMPO UNIDADE ALTERADO PARA DROPLIST */}
                   <div className="flex flex-col">
                     <label htmlFor="Unidade" className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Unidade *
@@ -793,33 +845,57 @@ export default function GestaoFuncionariosPage() {
                     />
                   </div>
                   <div className="flex flex-col">
-                    <label htmlFor="edit-SETOR" className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Setor
+                    <label htmlFor="edit-CARGO" className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Cargo *
                     </label>
                     <input
                       type="text"
+                      id="edit-CARGO"
+                      name="CARGO"
+                      required
+                      value={employeeToEdit.CARGO}
+                      onChange={handleEditFormChange}
+                      className={inputStyle}
+                      list="cargos-sugestoes"
+                    />
+                     <datalist id="cargos-sugestoes">
+                      {cargosUnicos.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </div>
+                  <div className="flex flex-col">
+                    <label htmlFor="edit-SETOR" className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Setor *
+                    </label>
+                    <select
                       id="edit-SETOR"
                       name="SETOR"
                       value={employeeToEdit.SETOR}
                       onChange={handleEditFormChange}
                       className={inputStyle}
-                    />
+                      required
+                    >
+                       <option value="" disabled>Selecione um Setor</option>
+                       {setoresDisponiveis.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </div>
                   <div className="flex flex-col">
                     <label
                       htmlFor="edit-Unidade"
                       className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300"
                     >
-                      Unidade
+                      Unidade *
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="edit-Unidade"
                       name="Unidade"
                       value={employeeToEdit.Unidade}
                       onChange={handleEditFormChange}
                       className={inputStyle}
-                    />
+                      required
+                    >
+                      <option value="" disabled>Selecione uma Unidade</option>
+                      {unidadesDisponiveis.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
                   </div>
                   <div className="flex flex-col">
                     <label
@@ -847,12 +923,13 @@ export default function GestaoFuncionariosPage() {
                       htmlFor="edit-Data Nasc."
                       className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300"
                     >
-                      Data de Nascimento
+                      Data de Nascimento *
                     </label>
                     <input
                       type="date"
                       id="edit-Data Nasc."
                       name="Data Nasc."
+                      required
                       value={employeeToEdit["Data Nasc."] as any}
                       onChange={handleEditFormChange}
                       className={inputStyle}
