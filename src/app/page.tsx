@@ -1,6 +1,5 @@
 "use client";
 
-// ✅ ÍCONES DE ORDENAÇÃO ESPECÍFICOS IMPORTADOS
 import { faChartBar, faPenToSquare, faPlus, faSort, faSortDown, faSortUp, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ArcElement, CategoryScale, Chart, Legend, LinearScale, PieController, Tooltip } from "chart.js";
@@ -410,6 +409,7 @@ export default function GestaoFuncionariosPage() {
     }
   };
 
+  // ✅ NOVA CONFIGURAÇÃO DE GRÁFICO PARA CARGO
   const chartsConfig = [
     { id: "chart-setor", title: "Distribuição por Setor", key: "SETOR" },
     { id: "chart-unidade", title: "Distribuição por Unidade", key: "Unidade" },
@@ -428,11 +428,13 @@ export default function GestaoFuncionariosPage() {
     },
     { id: "chart-aniversariantes", title: "Aniversariantes por Mês", key: "Data Nasc.", isMonth: true },
     { id: "chart-admissao", title: "Admissões por Mês", key: "Data Adm.", isMonth: true },
+    { id: "chart-cargo", title: "Distribuição por Cargo", key: "CARGO" },
   ];
 
+  // ✅ ATUALIZAÇÃO DO CABEÇALHO PARA INCLUIR ÍCONE NO CARGO
   const tableHeaders = [
     { key: "NOME", label: "Nome" },
-    { key: "CARGO", label: "Cargo" },
+    { key: "CARGO", label: "Cargo", chartIndex: 7 },
     { key: "SETOR", label: "Setor", chartIndex: 0 },
     { key: "Unidade", label: "Unidade", chartIndex: 1 },
     { key: "Tipo de Contrato", label: "Tipo Contrato", chartIndex: 2 },
@@ -467,7 +469,6 @@ export default function GestaoFuncionariosPage() {
     }
   };
 
-  // ✅ NOVA FUNÇÃO AUXILIAR PARA RENDERIZAR O ÍCONE DE ORDENAÇÃO
   const getSortIcon = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) {
       return <FontAwesomeIcon icon={faSort} className="ml-1 text-gray-400" />;
@@ -589,7 +590,6 @@ export default function GestaoFuncionariosPage() {
           <table className="w-full border-collapse text-sm text-gray-800 dark:text-gray-300">
             <thead className="bg-[#34495e] text-white">
               <tr>
-                {/* ✅ LÓGICA DO CABEÇALHO ATUALIZADA PARA USAR A NOVA FUNÇÃO DE ÍCONE */}
                 {tableHeaders.map(({ key, label, chartIndex }) => (
                   <th key={key} className="p-3 text-left font-semibold cursor-pointer" onClick={() => handleSort(key)}>
                     {label} {getSortIcon(key)}
