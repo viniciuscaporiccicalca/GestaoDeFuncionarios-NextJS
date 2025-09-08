@@ -357,6 +357,10 @@ export default function GestaoFuncionariosPage() {
     e.preventDefault();
     if (!employeeToEdit) return;
 
+    if (!employeeToEdit["Data Adm."]) {
+      alert("A data de admissão é obrigatória.");
+      return;
+    }
     const dataAdmissao = new Date(employeeToEdit["Data Adm."]);
     dataAdmissao.setMinutes(dataAdmissao.getMinutes() + dataAdmissao.getTimezoneOffset());
     
@@ -459,8 +463,8 @@ export default function GestaoFuncionariosPage() {
       {} as { [key: string]: number }
     );
     const order = chartConfig.isMonth ? meses : chartConfig.order;
-    const labels = order ? order.filter(k => data[k]) : Object.keys(data).sort();
-    const values = labels.map(k => data[k]);
+    const labels = order ? order.filter((k: string | number) => data[k]) : Object.keys(data).sort();
+    const values = labels.map((k: string | number) => data[k]);
     if (labels.length > 0) {
       setChartData({ title: chartConfig.title, labels, values });
       setIsChartModalOpen(true);
